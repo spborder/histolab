@@ -94,6 +94,7 @@ class Slide:
         path: Union[str, pathlib.Path],
         processed_path: Union[str, pathlib.Path],
         use_largeimage: bool = False,
+        annotations_path: None
     ) -> None:
         self._path = str(path) if isinstance(path, pathlib.Path) else path
 
@@ -107,6 +108,14 @@ class Slide:
                 "https://github.com/girder/large_image for instructions."
             )
         self._use_largeimage = use_largeimage
+
+        # Added support for input of WSI annotations
+        if annotations_path is not None:
+            self._annotations_path = annotations_path
+
+            # Added dependencies 
+            import lxml.etree as ET
+            import json
 
     def __repr__(self):
         return (
@@ -181,6 +190,7 @@ class Slide:
         tile_size: Tuple[int, int],
         level: int = None,
         mpp: float = None,
+        annotations: bool = False
     ) -> Tile:
         """Extract a tile of the image at the selected level.
 
@@ -203,11 +213,18 @@ class Slide:
             Micron per pixel resolution. Takes precedence over level. If this
             is not None, `large_image` will be used to fetch tiles at the exact
             microns-per-pixel resolution requested.
+        annotations: bool
+            Whether or not annotations should be included in tile. If this
+            is True, tiles are paired with label masks corresponding to annotated
+            pixels in the original image.
 
         Returns
         -------
         tile : Tile
             Image containing the selected tile.
+
+        (tile,labels): (Tile,Tile)
+            Paired image and annotation mask if specified.
         """
         if level is None and mpp is None:
             raise ValueError("Either level or mpp must be provided!")
@@ -264,6 +281,12 @@ class Slide:
                     if tile_size[0] >= image.size[0]
                     else IMG_DOWNSAMPLE_MODE,
                 )
+        
+        if annotations:
+            labels = self._annotations.read_labels(
+                location = (coords.x_ul, coords.y_ul),
+                size = tile_size
+            )
 
         return Tile(image, coords, level)
 
@@ -740,6 +763,9 @@ class Slide:
         except Exception as other_error:
             raise HistolabException(other_error.__repr__() + f". {bad_format_error}")
         return slide
+
+    @lazyproperty
+    def _annotations(self) -> 
 
 
 class SlideSet:
