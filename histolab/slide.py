@@ -8,7 +8,6 @@
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -93,8 +92,8 @@ class Slide:
         self,
         path: Union[str, pathlib.Path],
         processed_path: Union[str, pathlib.Path],
-        use_largeimage: bool = False,
-        annotations_path: None
+        annotations_path: None,
+        use_largeimage: bool = False
     ) -> None:
         self._path = str(path) if isinstance(path, pathlib.Path) else path
 
@@ -765,8 +764,59 @@ class Slide:
         return slide
 
     @lazyproperty
-    def _annotations(self) -> 
+    def _annotations(self):
+        """Annotations object from which you can find specific xml tags
+        
+        Returns
+        -------
+        annotations: lxml.ElementTree object (or maybe a json object if files are in json format)
+        """ 
+        if '.xml' in self.annotations_path:
+            ann_root = ET.parse(self.annotations_path)
+        elif '.json' in self.annotations_path:
+            with open(self.annotations_path,'r') as f:
+                ann_root = json.decode(f)
 
+    def read_labels(self,location,size):
+        """ Reading in annotations for current tile location.  Assumes one label for each pixel in the image.
+        
+        Returns
+        --------
+        label_mask: labeled mask with 0 = background and 1:N annotation IDs
+        """
+        label_mask = np.zeros((size,size))
+        coords = list(location)
+        intersect_box = [coords[0],coords[1],coords[0]+size,coords[1]+size]
+
+        if '.xml' in self.annotation_path:
+
+            # Getting all annotation IDs
+            ann_layers = self._annotation.get_root().findall('./Annotation/Annotations')
+            # These numbers don't start from zero
+            for i in range(1,len(ann_layers)):
+                regions = self._annotation.get_root().findall('./Annotation/Annotations/@[Id="'+str(i)+'"]/Regions/Region/')
+
+                for reg in regions:
+                    vertices = reg.findall('./Vertices/Vertex')
+                    x = []
+                    y = []
+                    for j,vert in enumerate(vertices):
+                        x.append(np.float32(vert.attrib('X')))
+                        y.append(np.float32(vert.attrib('Y')))
+                    contours = np.array(list(zip(x,y)))
+
+                    bbox_coords = [np.min(contours[:,0]),np.min(contours[:,1]),np.max(contours[:,0]),np.max(contours[:,1])]
+
+                    # Test for intersection 
+                    # silentmatt.com/rectangle-intersection/
+                    if (bbox_coords[0]<intersect_box[2] and bbox_coords[2]>intersect_box[0] and bbox_coords[1]>intersect_box[3] and bbox_coords[3]<intersect_box[1]):
+                        
+                        # Getting the coordinates of the overlapping rectangle
+                        intersect_rect = [np.maximum(bbox_coords[0],intersect_box[0]),
+                                        np.maximum(bbox_coords[1],intersect_box[1]),
+                                        np.minimum(bbox_coords[2],intersect_box[2]),
+                                        np.minimum(bbox_coords[3],intersect_box[3])
+                        ]
 
 class SlideSet:
     """Slideset object. It is considered a collection of Slides."""
