@@ -811,12 +811,16 @@ class Slide:
                     # silentmatt.com/rectangle-intersection/
                     if (bbox_coords[0]<intersect_box[2] and bbox_coords[2]>intersect_box[0] and bbox_coords[1]>intersect_box[3] and bbox_coords[3]<intersect_box[1]):
                         
+                        # Create mask for current annotation
+                        
                         # Getting the coordinates of the overlapping rectangle
                         intersect_rect = [np.maximum(bbox_coords[0],intersect_box[0]),
                                         np.maximum(bbox_coords[1],intersect_box[1]),
                                         np.minimum(bbox_coords[2],intersect_box[2]),
                                         np.minimum(bbox_coords[3],intersect_box[3])
                         ]
+
+                        label_mask[intersect_rect[1]:intersect_rect[3],intersect_rect[0]:intersect_rect[2]] = 
 
 class SlideSet:
     """Slideset object. It is considered a collection of Slides."""
